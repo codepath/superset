@@ -93,18 +93,29 @@ export default styled.div`
       height: auto;
     }
 
+    /* pagination layout and padding fix */
     .dt-pagination {
-      text-align: right;
-      /* use padding instead of margin so clientHeight can capture it */
-      padding-top: 0.5em;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 8px 12px; /* ensure visible, not cut off */
+      margin-top: 8px; /* breathing room from table */
+      box-sizing: border-box;
     }
+
     .dt-pagination .pagination {
-      margin: 0;
+      margin: 0; /* prevent double spacing */
     }
 
     .pagination > li > span.dt-pagination-ellipsis:focus,
     .pagination > li > span.dt-pagination-ellipsis:hover {
-      background: ${theme.colors.grayscale.light5};
+    }
+
+    /* make sure the pagination isn't clipped by any ancestor overflow */
+    .dt-pagination,
+    .dt-pagination * {
+      overflow: visible;
     }
 
     .dt-no-results {
