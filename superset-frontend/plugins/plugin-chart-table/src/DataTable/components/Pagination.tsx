@@ -17,6 +17,7 @@
  * under the License.
  */
 import { CSSProperties, forwardRef, memo, Ref } from 'react';
+import { styled } from '@superset-ui/core';
 
 export interface PaginationProps {
   pageCount: number; // number of pages
@@ -29,6 +30,81 @@ export interface PaginationProps {
 
 // first, ..., prev, current, next, ..., last
 const MINIMAL_PAGE_ITEM_COUNT = 7;
+
+// Styled components to match the main pagination style
+const PaginationList = styled.ul`
+  display: inline-block;
+  margin: 16px 0;
+  padding: 0;
+
+  li {
+    display: inline;
+    margin: 0 4px;
+
+    span, a {
+      padding: 8px 12px;
+      text-decoration: none;
+      background-color: ${({ theme }) => theme.colors.grayscale.light5};
+      border-radius: ${({ theme }) => theme.borderRadius}px;
+      color: inherit;
+      cursor: pointer;
+      border: none;
+
+      &:hover,
+      &:focus {
+        z-index: 2;
+        color: ${({ theme }) => theme.colors.grayscale.dark1};
+        background-color: ${({ theme }) => theme.colors.grayscale.light3};
+      }
+    }
+
+    &.active {
+      span, a {
+        z-index: 3;
+        color: ${({ theme }) => theme.colors.grayscale.light5};
+        cursor: default;
+        background-color: ${({ theme }) => theme.colors.primary.base};
+
+        &:focus {
+          outline: none;
+        }
+      }
+    }
+
+    &.disabled {
+      span {
+        background-color: transparent;
+        cursor: default;
+        opacity: 0.5;
+
+        &:focus {
+          outline: none;
+        }
+
+        &:hover {
+          background-color: transparent;
+        }
+      }
+    }
+
+    &.dt-pagination-ellipsis {
+      span {
+        cursor: default;
+        &:hover {
+          background-color: ${({ theme }) => theme.colors.grayscale.light5};
+        }
+      }
+    }
+  }
+`;
+
+const PaginationContainer = styled.div`
+  &.dt-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+`;
 
 /**
  * Generate numeric page items around current page.
@@ -89,8 +165,23 @@ export default memo(
       maxPageItemCount,
     );
     return (
-      <div ref={ref} className="dt-pagination" style={style}>
-        <ul className="pagination pagination-sm">
+      <PaginationContainer ref={ref} className="dt-pagination" style={style}>
+        <PaginationList role="navigation">
+          {/* Previous button */}
+          <li className={currentPage === 0 ? 'disabled' : undefined}>
+            <span
+              role="button"
+              tabIndex={currentPage === 0 ? -1 : 0}
+              onClick={e => {
+                e.preventDefault();
+                if (currentPage > 0) onPageChange(currentPage - 1);
+              }}
+            >
+              «
+            </span>
+          </li>
+          
+          {/* Page numbers */}
           {pageItems.map(item =>
             typeof item === 'number' ? (
               // actual page number
@@ -98,16 +189,16 @@ export default memo(
                 key={item}
                 className={currentPage === item ? 'active' : undefined}
               >
-                <a
-                  href={`#page-${item}`}
+                <span
                   role="button"
+                  tabIndex={currentPage === item ? -1 : 0}
                   onClick={e => {
                     e.preventDefault();
-                    onPageChange(item);
+                    if (currentPage !== item) onPageChange(item);
                   }}
                 >
                   {item + 1}
-                </a>
+                </span>
               </li>
             ) : (
               <li key={item} className="dt-pagination-ellipsis">
@@ -115,8 +206,22 @@ export default memo(
               </li>
             ),
           )}
-        </ul>
-      </div>
+          
+          {/* Next button */}
+          <li className={currentPage === pageCount - 1 ? 'disabled' : undefined}>
+            <span
+              role="button"
+              tabIndex={currentPage === pageCount - 1 ? -1 : 0}
+              onClick={e => {
+                e.preventDefault();
+                if (currentPage < pageCount - 1) onPageChange(currentPage + 1);
+              }}
+            >
+              »
+            </span>
+          </li>
+        </PaginationList>
+      </PaginationContainer>
     );
   }),
 );

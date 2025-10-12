@@ -405,14 +405,16 @@ export default typedMemo(function DataTable<D extends object>({
       ) : null}
       {wrapStickyTable ? wrapStickyTable(renderTable) : renderTable()}
       {hasPagination && resultPageCount > 1 ? (
-        <SimplePagination
-          ref={paginationRef}
-          style={paginationStyle}
-          maxPageItemCount={maxPageItemCount}
-          pageCount={resultPageCount}
-          currentPage={resultCurrentPage}
-          onPageChange={resultOnPageChange}
-        />
+        <div className="pagination-container">
+          <SimplePagination
+            ref={paginationRef}
+            style={paginationStyle}
+            maxPageItemCount={maxPageItemCount}
+            pageCount={resultPageCount}
+            currentPage={resultCurrentPage}
+            onPageChange={resultOnPageChange}
+          />
+        </div>
       ) : null}
     </div>
   );
