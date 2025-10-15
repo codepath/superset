@@ -91,6 +91,28 @@ export default memo(
     return (
       <div ref={ref} className="dt-pagination" style={style}>
         <ul className="pagination pagination-sm">
+          {/* Prev button */}
+          <li
+            key="prev"
+            className={currentPage === 0 ? 'disabled dt-pagination-prev' : 'dt-pagination-prev'}
+            aria-disabled={currentPage === 0}
+          >
+            <a
+              href="#prev"
+              role="button"
+              onClick={e => {
+                e.preventDefault();
+                if (currentPage > 0) {
+                  onPageChange(currentPage - 1);
+                }
+              }}
+              tabIndex={currentPage === 0 ? -1 : 0}
+              aria-label={currentPage === 0 ? undefined : 'Previous page'}
+            >
+              ‹
+            </a>
+          </li>
+
           {pageItems.map(item =>
             typeof item === 'number' ? (
               // actual page number
@@ -115,6 +137,28 @@ export default memo(
               </li>
             ),
           )}
+
+          {/* Next button */}
+          <li
+            key="next"
+            className={currentPage >= pageCount - 1 ? 'disabled dt-pagination-next' : 'dt-pagination-next'}
+            aria-disabled={currentPage >= pageCount - 1}
+          >
+            <a
+              href="#next"
+              role="button"
+              onClick={e => {
+                e.preventDefault();
+                if (currentPage < pageCount - 1) {
+                  onPageChange(currentPage + 1);
+                }
+              }}
+              tabIndex={currentPage >= pageCount - 1 ? -1 : 0}
+              aria-label={currentPage >= pageCount - 1 ? undefined : 'Next page'}
+            >
+              ›
+            </a>
+          </li>
         </ul>
       </div>
     );

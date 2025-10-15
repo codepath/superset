@@ -96,10 +96,19 @@ export default styled.div`
     .dt-pagination {
       text-align: right;
       /* use padding instead of margin so clientHeight can capture it */
-      padding-top: 0.5em;
+      padding-top: ${theme.gridUnit * 4}px;
+      display: flex;
+      justify-content: flex-end;
+      padding-right: ${theme.gridUnit * 3}px;
+      
     }
     .dt-pagination .pagination {
       margin: 0;
+      display: flex;
+      gap: ${theme.gridUnit * 2}px;
+      align-items: center;
+      list-style: none;
+      padding-left: 0;
     }
 
     .pagination > li > span.dt-pagination-ellipsis:focus,
