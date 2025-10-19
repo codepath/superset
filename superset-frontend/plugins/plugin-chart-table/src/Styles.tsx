@@ -94,9 +94,14 @@ export default styled.div`
     }
 
     .dt-pagination {
-      text-align: right;
-      /* use padding instead of margin so clientHeight can capture it */
-      padding-top: 0.5em;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      box-sizing: border-box;
+      overflow: visible;
     }
     .dt-pagination .pagination {
       margin: 0;
