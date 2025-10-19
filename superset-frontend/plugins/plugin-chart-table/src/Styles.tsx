@@ -101,6 +101,9 @@ export default styled.div`
     .dt-pagination .pagination {
       margin: 0;
     }
+    .dt-pagination .pagination li {
+      margin-right: 4px;  /* Add spacing between pagination buttons */
+    }
 
     .pagination > li > span.dt-pagination-ellipsis:focus,
     .pagination > li > span.dt-pagination-ellipsis:hover {
