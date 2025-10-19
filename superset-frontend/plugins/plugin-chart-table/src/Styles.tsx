@@ -96,7 +96,7 @@ export default styled.div`
     .dt-pagination {
       text-align: right;
       /* use padding instead of margin so clientHeight can capture it */
-      padding-top: 0.5em;
+      padding: 0.5em 1.5em;  /* Add horizontal padding to prevent cut-off */
     }
     .dt-pagination .pagination {
       margin: 0;
