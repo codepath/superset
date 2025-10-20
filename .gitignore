@@ -49,6 +49,7 @@ dist
 dump.rdb
 env
 venv*
+.cursor/*
 env_py3
 envpy3
 local_config.py

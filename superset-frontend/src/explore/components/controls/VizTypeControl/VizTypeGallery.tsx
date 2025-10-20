@@ -85,10 +85,9 @@ export const VIZ_TYPE_CONTROL_TEST_ID = 'viz-type-control';
 const VizPickerLayout = styled.div<{ isSelectedVizMetadata: boolean }>`
   ${({ isSelectedVizMetadata }) => `
     display: grid;
-    grid-template-rows: ${
-      isSelectedVizMetadata
-        ? `auto minmax(100px, 1fr) minmax(200px, 35%)`
-        : 'auto minmax(100px, 1fr)'
+    grid-template-rows: ${isSelectedVizMetadata
+      ? `auto minmax(100px, 1fr) minmax(200px, 35%)`
+      : 'auto minmax(100px, 1fr)'
     };
     // em is used here because the sidebar should be sized to fit the longest standard tag
     grid-template-columns: minmax(14em, auto) 5fr;
@@ -585,6 +584,13 @@ export default function VizTypeGallery(props: VizTypeGalleryProps) {
     searchInputRef.current!.blur();
   }, []);
 
+  // Auto-focus the search input when the component mounts (modal opens)
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, []);
+
   const clickSelector = useCallback(
     (selector: string, sectionId: string) => {
       if (isSearchFocused) {
@@ -818,11 +824,11 @@ export default function VizTypeGallery(props: VizTypeGalleryProps) {
               {(selectedVizMetadata?.exampleGallery?.length
                 ? selectedVizMetadata.exampleGallery
                 : [
-                    {
-                      url: selectedVizMetadata?.thumbnail,
-                      caption: selectedVizMetadata?.name,
-                    },
-                  ]
+                  {
+                    url: selectedVizMetadata?.thumbnail,
+                    caption: selectedVizMetadata?.name,
+                  },
+                ]
               ).map(example => (
                 <img
                   key={example.url}
