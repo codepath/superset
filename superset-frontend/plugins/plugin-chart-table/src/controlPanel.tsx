@@ -308,6 +308,28 @@ const config: ControlPanelConfig = {
               resetOnHide: false,
             },
           },
+        ],
+        [
+          {
+            name: 'order_desc',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Sort descending'),
+              default: true,
+              description: t(
+                'If enabled, this control sorts the results/values descending, otherwise it sorts the results ascending.',
+              ),
+              visibility: ({ controls }: ControlPanelsContainerProps) => {
+                // Only show in aggregation mode AND when a sort metric is selected
+                return isAggMode({ controls }) && 
+                       Boolean(controls?.timeseries_limit_metric?.value) && 
+                       !isEmpty(controls?.timeseries_limit_metric?.value);
+              },
+              resetOnHide: false,
+            },
+          },
+        ],
+        [
           {
             name: 'order_by_cols',
             config: {
@@ -359,21 +381,6 @@ const config: ControlPanelConfig = {
               description: t('Rows per page, 0 means no pagination'),
               visibility: ({ controls }: ControlPanelsContainerProps) =>
                 Boolean(controls?.server_pagination?.value),
-            },
-          },
-        ],
-        [
-          {
-            name: 'order_desc',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Sort descending'),
-              default: true,
-              description: t(
-                'If enabled, this control sorts the results/values descending, otherwise it sorts the results ascending.',
-              ),
-              visibility: isAggMode,
-              resetOnHide: false,
             },
           },
         ],

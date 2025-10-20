@@ -58,7 +58,7 @@ const buildQuery: BuildQuery<TableChartFormData> = (
 ) => {
   const {
     percent_metrics: percentMetrics,
-    order_desc: orderDesc = false,
+    order_desc: orderDesc = true,
     extra_form_data,
   } = formData;
   const queryMode = getQueryMode(formData);

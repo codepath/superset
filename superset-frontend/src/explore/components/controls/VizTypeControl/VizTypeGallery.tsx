@@ -443,6 +443,19 @@ export default function VizTypeGallery(props: VizTypeGalleryProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(true);
   const isActivelySearching = isSearchFocused && !!searchInputValue;
 
+  // Auto-focus the search input when the modal opens
+  useEffect(() => {
+    // Use setTimeout to ensure the modal animation completes before focusing
+    const timeoutId = setTimeout(() => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+    }, 150);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+
   const selectedVizMetadata: ChartMetadata | null = selectedViz
     ? mountedPluginMetadata[selectedViz]
     : null;
