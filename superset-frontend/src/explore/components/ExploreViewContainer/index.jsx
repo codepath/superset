@@ -268,6 +268,18 @@ function ExploreViewContainer(props) {
 
   const theme = useTheme();
 
+  // Update document title when chart name changes
+  useEffect(() => {
+    if (props.sliceName) {
+      document.title = props.sliceName;
+    }
+    
+    // Cleanup: reset to default Superset title
+    return () => {
+      document.title = 'Superset';
+    };
+  }, [props.sliceName]);
+
   const addHistory = useCallback(
     async ({ isReplace = false, title } = {}) => {
       const formData = props.dashboardId
