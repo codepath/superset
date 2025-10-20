@@ -43,6 +43,9 @@ import VizTypeControl, { VIZ_TYPE_CONTROL_TEST_ID } from './index';
 
 jest.useFakeTimers();
 
+// Mock scrollIntoView to prevent errors with fake timers
+jest.mock('scroll-into-view-if-needed', () => jest.fn());
+
 class MainPreset extends Preset {
   constructor() {
     super({
@@ -255,5 +258,23 @@ describe('VizTypeControl', () => {
     userEvent.dblClick(within(visualizations).getByText('Line Chart'));
 
     expect(defaultProps.onChange).toHaveBeenCalledWith(VizType.Line);
+  });
+
+  it('Auto-focuses search input when modal opens', async () => {
+    await waitForRenderWrapper();
+
+    // Open the modal
+    userEvent.click(screen.getByText('View all charts'));
+
+    // Wait for the modal to open and the search input to be rendered
+    const searchInput = await screen.findByTestId(getTestId('search-input'));
+
+    // Run all timers to trigger the auto-focus setTimeout
+    jest.runAllTimers();
+
+    // Check that the search input is focused
+    await waitFor(() => {
+      expect(searchInput).toHaveFocus();
+    });
   });
 });
