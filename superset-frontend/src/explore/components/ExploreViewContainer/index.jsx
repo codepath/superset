@@ -63,6 +63,7 @@ import { getFormDataFromControls } from 'src/explore/controlUtils';
 import * as exploreActions from 'src/explore/actions/exploreActions';
 import * as saveModalActions from 'src/explore/actions/saveModalActions';
 import { useTabId } from 'src/hooks/useTabId';
+import { useDocumentTitle } from 'src/hooks/useDocumentTitle';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import ExploreChartPanel from '../ExploreChartPanel';
 import ConnectedControlPanelsContainer from '../ControlPanelsContainer';
@@ -267,6 +268,9 @@ function ExploreViewContainer(props) {
   const tabId = useTabId();
 
   const theme = useTheme();
+
+  // Set document title to chart name
+  useDocumentTitle(props.sliceName);
 
   const addHistory = useCallback(
     async ({ isReplace = false, title } = {}) => {
