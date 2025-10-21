@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 import { FilterXSS, getDefaultWhiteList } from 'xss';
 
 const xssFilter = new FilterXSS({
@@ -51,6 +52,17 @@ export function hasHtmlTagPattern(str: string): boolean {
   return htmlTagPattern.test(str);
 }
 
+export function escapeHtml(text: string): string {
+  const htmlEscapes: { [key: string]: string } = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text.replace(/[&<>"']/g, (char) => htmlEscapes[char]);
+}
+
 export function isProbablyHTML(text: string) {
   const cleanedStr = text.trim().toLowerCase();
 
@@ -61,9 +73,9 @@ export function isProbablyHTML(text: string) {
     return true;
   }
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(cleanedStr, 'text/html');
-  return Array.from(doc.body.childNodes).some(({ nodeType }) => nodeType === 1);
+
+  return false;
+
 }
 
 export function sanitizeHtmlIfNeeded(htmlString: string) {
@@ -80,7 +92,12 @@ export function safeHtmlSpan(possiblyHtmlString: string) {
       />
     );
   }
-  return possiblyHtmlString;
+  return (
+    <span
+      className="safe-html-wrapper"
+      dangerouslySetInnerHTML={{ __html: escapeHtml(possiblyHtmlString) }}
+    />
+  );
 }
 
 export function removeHTMLTags(str: string): string {
