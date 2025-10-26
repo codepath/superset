@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import React from 'react';
 import { FilterXSS, getDefaultWhiteList } from 'xss';
 
 const xssFilter = new FilterXSS({
@@ -70,15 +71,27 @@ export function sanitizeHtmlIfNeeded(htmlString: string) {
   return isProbablyHTML(htmlString) ? sanitizeHtml(htmlString) : htmlString;
 }
 
-export function safeHtmlSpan(possiblyHtmlString: string) {
+/**
+ * Escapes HTML special characters to display them as text
+ * Converts < to &lt;, > to &gt;, & to &amp;, etc.
+ */
+export function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#x27;',
+    '/': '&#x2F;',
+  };
+  return text.replace(/[&<>"'/]/g, char => map[char]);
+}
+
+export function safeHtmlSpan(possiblyHtmlString: string): string | JSX.Element {
   const isHtml = isProbablyHTML(possiblyHtmlString);
   if (isHtml) {
-    return (
-      <span
-        className="safe-html-wrapper"
-        dangerouslySetInnerHTML={{ __html: sanitizeHtml(possiblyHtmlString) }}
-      />
-    );
+    // Render as plain text to display the raw HTML string without interpreting it
+    return <span style={{ whiteSpace: 'pre-wrap' }}>{possiblyHtmlString}</span>;
   }
   return possiblyHtmlString;
 }

@@ -16,6 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+import React from 'react';
+import { render } from '@testing-library/react';
 import {
   sanitizeHtml,
   isProbablyHTML,
@@ -24,6 +26,7 @@ import {
   removeHTMLTags,
   isJsonString,
   getParagraphContents,
+  escapeHtml,
 } from './html';
 
 describe('sanitizeHtml', () => {
@@ -65,22 +68,47 @@ describe('sanitizeHtmlIfNeeded', () => {
   });
 });
 
+describe('escapeHtml', () => {
+  test('should escape HTML special characters', () => {
+    const htmlString = '<div>test</div>';
+    const escaped = escapeHtml(htmlString);
+    expect(escaped).toBe('&lt;div&gt;test&lt;&#x2F;div&gt;');
+  });
+
+  test('should escape all special characters', () => {
+    const testString = '<>&"\'/';
+    const escaped = escapeHtml(testString);
+    expect(escaped).toBe('&lt;&gt;&amp;&quot;&#x27;&#x2F;');
+  });
+
+  test('should not escape regular text', () => {
+    const plainText = 'Just a plain text';
+    const escaped = escapeHtml(plainText);
+    expect(escaped).toBe(plainText);
+  });
+});
+
 describe('safeHtmlSpan', () => {
-  test('should return a safe HTML span when the input is HTML', () => {
+  test('should render HTML content as a span element to display as text', () => {
     const htmlString = '<div>Some <b>HTML</b> content</div>';
-    const safeSpan = safeHtmlSpan(htmlString);
-    expect(safeSpan).toEqual(
-      <span
-        className="safe-html-wrapper"
-        dangerouslySetInnerHTML={{ __html: htmlString }}
-      />,
-    );
+    const result = safeHtmlSpan(htmlString);
+    const { container } = render(result as React.ReactElement);
+    // The span should contain the raw HTML string as text content
+    expect(container.textContent).toBe(htmlString);
   });
 
   test('should return the input string as is when it is not HTML', () => {
     const plainText = 'Just a plain text';
     const result = safeHtmlSpan(plainText);
     expect(result).toEqual(plainText);
+  });
+
+  test('should preserve HTML tags as visible text', () => {
+    const htmlString = '<div>test</div>';
+    const result = safeHtmlSpan(htmlString);
+    const { container } = render(result as React.ReactElement);
+    // Should display <div>test</div> as text
+    expect(container.textContent).toBe(htmlString);
   });
 });
 
