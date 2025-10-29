@@ -1470,6 +1470,8 @@ class SqlaTable(
         tbl = table(self.table_name)
         if self.schema:
             tbl.schema = self.schema
+        if self.catalog:
+            tbl.catalog = self.catalog
         return tbl
 
     def get_from_clause(
