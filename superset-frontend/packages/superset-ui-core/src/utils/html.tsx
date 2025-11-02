@@ -87,6 +87,24 @@ export function removeHTMLTags(str: string): string {
   return str.replace(/<[^>]*>/g, '');
 }
 
+/**
+ * Escapes HTML entities in a string to prevent it from being interpreted as HTML.
+ * This is useful for displaying strings containing angle brackets as plain text.
+ *
+ * @param str - The string to escape
+ * @returns The escaped string with HTML entities
+ */
+export function escapeHtml(str: string): string {
+  const escapeMap: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return str.replace(/[&<>"']/g, match => escapeMap[match]);
+}
+
 export function isJsonString(str: string): boolean {
   try {
     JSON.parse(str);

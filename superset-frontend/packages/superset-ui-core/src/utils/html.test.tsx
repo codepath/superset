@@ -24,6 +24,7 @@ import {
   removeHTMLTags,
   isJsonString,
   getParagraphContents,
+  escapeHtml,
 } from './html';
 
 describe('sanitizeHtml', () => {
@@ -187,5 +188,51 @@ describe('getParagraphContents', () => {
     expect(result).toEqual({
       p1: 'First paragraph with nested content.',
     });
+  });
+});
+
+describe('escapeHtml', () => {
+  test('should escape angle brackets', () => {
+    const input = '<div>test</div>';
+    const output = escapeHtml(input);
+    expect(output).toBe('&lt;div&gt;test&lt;/div&gt;');
+  });
+
+  test('should escape ampersand', () => {
+    const input = 'A & B';
+    const output = escapeHtml(input);
+    expect(output).toBe('A &amp; B');
+  });
+
+  test('should escape quotes', () => {
+    const input = 'Say "hello" and \'hi\'';
+    const output = escapeHtml(input);
+    expect(output).toBe('Say &quot;hello&quot; and &#39;hi&#39;');
+  });
+
+  test('should escape all HTML entities in complex string', () => {
+    const input = '<script>alert("XSS & more")</script>';
+    const output = escapeHtml(input);
+    expect(output).toBe(
+      '&lt;script&gt;alert(&quot;XSS &amp; more&quot;)&lt;/script&gt;',
+    );
+  });
+
+  test('should return plain text unchanged', () => {
+    const input = 'Just plain text';
+    const output = escapeHtml(input);
+    expect(output).toBe('Just plain text');
+  });
+
+  test('should handle strings with comparison operators', () => {
+    const input = 'a <= 10 and b > 10';
+    const output = escapeHtml(input);
+    expect(output).toBe('a &lt;= 10 and b &gt; 10');
+  });
+
+  test('should handle empty string', () => {
+    const input = '';
+    const output = escapeHtml(input);
+    expect(output).toBe('');
   });
 });
