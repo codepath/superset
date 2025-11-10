@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { ChangeEvent, useMemo, useState, useCallback, useEffect } from 'react';
+import { ChangeEvent, useMemo, useState, useCallback, useEffect, useRef } from 'react';
 
 import Modal from 'src/components/Modal';
 import { Input, TextArea } from 'src/components/Input';
@@ -51,6 +51,7 @@ export type PropertiesModalProps = {
   permissionsError?: string;
   existingOwners?: SelectValue;
   addSuccessToast: (msg: string) => void;
+  onFormChange?: (hasChanges: boolean) => void;
 };
 
 const FormItem = AntdForm.Item;
@@ -69,6 +70,7 @@ function PropertiesModal({
   onSave,
   show,
   addSuccessToast,
+  onFormChange,
 }: PropertiesModalProps) {
   const theme = useTheme();
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +82,17 @@ function PropertiesModal({
   );
 
   const [tags, setTags] = useState<TagType[]>([]);
+  
+  // Track original values for change detection
+  const originalValuesRef = useRef<{
+    name: string;
+    description: string;
+    cache_timeout: number | null;
+    certified_by: string;
+    certification_details: string;
+    owners: SelectValue | null;
+    tags: TagType[];
+  } | null>(null);
 
   const tagsAsSelectValues = useMemo(() => {
     const selectTags = tags.map((tag: { id: number; name: string }) => ({
@@ -209,10 +222,99 @@ function PropertiesModal({
     fetchChartOwners();
   }, [fetchChartOwners]);
 
+  // Track original values when modal opens and data is loaded
+  useEffect(() => {
+    if (show && selectedOwners !== null) {
+      // Wait for owners to be loaded before setting original values
+      originalValuesRef.current = {
+        name: slice.slice_name || '',
+        description: slice.description || '',
+        cache_timeout: slice.cache_timeout != null ? slice.cache_timeout : null,
+        certified_by: slice.certified_by || '',
+        certification_details: slice.certification_details || '',
+        owners: selectedOwners,
+        tags: [...tags],
+      };
+    } else if (!show) {
+      originalValuesRef.current = null;
+    }
+  }, [show, slice.slice_id, selectedOwners, tags]);
+
   // update name after it's changed in another modal
   useEffect(() => {
     setName(slice.slice_name || '');
   }, [slice.slice_name]);
+
+  // Detect form changes and notify parent
+  useEffect(() => {
+    if (!show || !onFormChange || !originalValuesRef.current) {
+      if (onFormChange && !show) {
+        // Reset when modal closes
+        console.log('[PropertiesModal] Modal closed, resetting changes');
+        onFormChange(false);
+      }
+      return;
+    }
+
+    const checkForChanges = () => {
+      const formValues = form.getFieldsValue();
+      const original = originalValuesRef.current!;
+      
+      // Compare owners by IDs
+      const currentOwnerIds = Array.isArray(selectedOwners)
+        ? (selectedOwners as { value: number }[])
+            .map(o => o.value)
+            .sort()
+        : [];
+      const originalOwnerIds = Array.isArray(original.owners)
+        ? (original.owners as { value: number }[])
+            .map(o => o.value)
+            .sort()
+        : [];
+      
+      // Compare tags by IDs
+      const currentTagIds = tags.map(t => t.id).sort();
+      const originalTagIds = original.tags.map(t => t.id).sort();
+      
+      const hasChanges =
+        name !== original.name ||
+        (formValues.description || '') !== (original.description || '') ||
+        (formValues.cache_timeout ?? null) !== original.cache_timeout ||
+        (formValues.certified_by || '') !== (original.certified_by || '') ||
+        (formValues.certification_details || '') !== (original.certification_details || '') ||
+        JSON.stringify(currentOwnerIds) !== JSON.stringify(originalOwnerIds) ||
+        JSON.stringify(currentTagIds) !== JSON.stringify(originalTagIds);
+
+      console.log('[PropertiesModal] Change detection:', {
+        hasChanges,
+        nameChanged: name !== original.name,
+        descriptionChanged: (formValues.description || '') !== (original.description || ''),
+        cacheTimeoutChanged: (formValues.cache_timeout ?? null) !== original.cache_timeout,
+        ownersChanged: JSON.stringify(currentOwnerIds) !== JSON.stringify(originalOwnerIds),
+        tagsChanged: JSON.stringify(currentTagIds) !== JSON.stringify(originalTagIds),
+        originalValues: original,
+        currentValues: {
+          name,
+          description: formValues.description,
+          cache_timeout: formValues.cache_timeout,
+          owners: currentOwnerIds,
+          tags: currentTagIds,
+        },
+      });
+
+      onFormChange(hasChanges);
+    };
+
+    // Check when values change
+    checkForChanges();
+    
+    // Subscribe to form field changes
+    const unsubscribe = form.getFieldsValue();
+    // Also check periodically for form field changes (AntdForm doesn't expose a change event)
+    const interval = setInterval(checkForChanges, 500);
+
+    return () => clearInterval(interval);
+  }, [show, name, selectedOwners, tags, form, onFormChange]);
 
   useEffect(() => {
     if (!isFeatureEnabled(FeatureFlag.TaggingSystem)) return;

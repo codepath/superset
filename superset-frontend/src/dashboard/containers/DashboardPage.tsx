@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { createContext, lazy, FC, useEffect, useMemo, useRef } from 'react';
+import { createContext, lazy, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { Global } from '@emotion/react';
 import { useHistory } from 'react-router-dom';
 import { t, useTheme } from '@superset-ui/core';
@@ -24,6 +24,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { createSelector } from '@reduxjs/toolkit';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import Loading from 'src/components/Loading';
+import UnsavedChangesModal from 'src/components/UnsavedChangesModal';
 import {
   useDashboard,
   useDashboardCharts,
@@ -40,12 +41,17 @@ import { getActiveFilters } from 'src/dashboard/util/activeDashboardFilters';
 import { LocalStorageKeys, setItem } from 'src/utils/localStorageHelpers';
 import { URL_PARAMS } from 'src/constants';
 import { getUrlParam } from 'src/utils/urlUtils';
-import { setDatasetsStatus } from 'src/dashboard/actions/dashboardState';
+import {
+  setDatasetsStatus,
+  saveDashboardRequest,
+  setUnsavedChanges,
+} from 'src/dashboard/actions/dashboardState';
 import {
   getFilterValue,
   getPermalinkValue,
 } from 'src/dashboard/components/nativeFilters/FilterBar/keyValue';
 import DashboardContainer from 'src/dashboard/containers/Dashboard';
+import { SAVE_TYPE_OVERWRITE, DASHBOARD_HEADER_ID } from 'src/dashboard/util/constants';
 
 import { nanoid } from 'nanoid';
 import { RootState } from '../types';
@@ -214,7 +220,7 @@ export const DashboardPage: FC<PageProps> = ({ idOrSlug }: PageProps) => {
       // when dashboard unmounts or changes
       return injectCustomCss(css);
     }
-    return () => {};
+    return () => { };
   }, [css]);
 
   useEffect(() => {
@@ -229,6 +235,160 @@ export const DashboardPage: FC<PageProps> = ({ idOrSlug }: PageProps) => {
 
   const relevantDataMask = useSelector(selectRelevantDatamask);
   const activeFilters = useSelector(selectActiveFilters);
+
+  // Navigation blocking for unsaved changes
+  const hasUnsavedChanges = useSelector<RootState, boolean>(
+    state => !!state.dashboardState.hasUnsavedChanges,
+  );
+  const editMode = useSelector<RootState, boolean>(
+    state => !!state.dashboardState.editMode,
+  );
+  const dashboardInfo = useSelector<RootState, any>(
+    state => state.dashboardInfo,
+  );
+  const layout = useSelector<RootState, any>(
+    state => state.dashboardLayout.present,
+  );
+  const dashboardState = useSelector<RootState, any>(
+    state => state.dashboardState,
+  );
+
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null,
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const unblockRef = useRef<(() => void) | null>(null);
+
+  // Set up navigation blocking
+  useEffect(() => {
+    if (editMode && hasUnsavedChanges) {
+      // Block navigation when in edit mode with unsaved changes
+      // history.block() returns an unblock function
+      unblockRef.current = history.block((location, action) => {
+        // Only block if navigating to a different route
+        if (location.pathname !== history.location.pathname) {
+          setPendingNavigation(location.pathname);
+          setShowUnsavedModal(true);
+          // Return false to prevent navigation (this prevents browser prompt)
+          // We'll handle navigation manually via our modal
+          return '';
+        }
+        // Allow navigation within the same route (e.g., hash changes)
+        return true;
+      });
+    } else {
+      // Unblock navigation when not in edit mode or no unsaved changes
+      if (unblockRef.current) {
+        unblockRef.current();
+        unblockRef.current = null;
+      }
+    }
+
+    return () => {
+      if (unblockRef.current) {
+        unblockRef.current();
+        unblockRef.current = null;
+      }
+    };
+  }, [editMode, hasUnsavedChanges, history]);
+
+  // Handle Save action
+  const handleSave = useMemo(
+    () => () => {
+      if (!dashboardInfo?.id) {
+        return;
+      }
+
+      setIsSaving(true);
+      const currentColorNamespace =
+        dashboardInfo?.metadata?.color_namespace ||
+        dashboardState.colorNamespace;
+      const currentColorScheme =
+        dashboardInfo?.metadata?.color_scheme || dashboardState.colorScheme;
+      const dashboardTitle =
+        layout[DASHBOARD_HEADER_ID]?.meta?.text || dashboardInfo.dashboard_title;
+
+      const data = {
+        certified_by: dashboardInfo.certified_by,
+        certification_details: dashboardInfo.certification_details,
+        css: dashboardState.css || '',
+        dashboard_title: dashboardTitle,
+        last_modified_time: dashboardInfo.last_modified_time,
+        owners: dashboardInfo.owners,
+        roles: dashboardInfo.roles,
+        slug: dashboardInfo.slug,
+        metadata: {
+          ...dashboardInfo?.metadata,
+          color_namespace: currentColorNamespace,
+          color_scheme: currentColorScheme,
+          positions: layout,
+          refresh_frequency: dashboardState.shouldPersistRefreshFrequency
+            ? dashboardState.refreshFrequency
+            : dashboardInfo.metadata?.refresh_frequency,
+        },
+      };
+
+      // Temporarily unblock to allow navigation after save
+      const currentUnblock = unblockRef.current;
+      if (currentUnblock) {
+        currentUnblock();
+        unblockRef.current = null;
+      }
+
+      dispatch(
+        saveDashboardRequest(data, dashboardInfo.id, SAVE_TYPE_OVERWRITE),
+      )
+        .then(() => {
+          setIsSaving(false);
+          setShowUnsavedModal(false);
+          // Proceed with navigation after save
+          const navPath = pendingNavigation;
+          setPendingNavigation(null);
+          if (navPath) {
+            history.push(navPath);
+          }
+        })
+        .catch(() => {
+          // Save failed or requires confirmation - keep modal open
+          setIsSaving(false);
+          // Don't navigate if save failed
+        });
+    },
+    [dashboardInfo, layout, dashboardState, dispatch, history, pendingNavigation],
+  );
+
+  // Handle Discard action
+  const handleDiscard = useMemo(
+    () => () => {
+      // Temporarily unblock to allow navigation
+      const currentUnblock = unblockRef.current;
+      if (currentUnblock) {
+        currentUnblock();
+        unblockRef.current = null;
+      }
+
+      // Clear unsaved changes flag
+      dispatch(setUnsavedChanges(false));
+      setShowUnsavedModal(false);
+      // Proceed with navigation
+      const navPath = pendingNavigation;
+      setPendingNavigation(null);
+      if (navPath) {
+        history.push(navPath);
+      }
+    },
+    [dispatch, history, pendingNavigation],
+  );
+
+  // Handle Cancel action
+  const handleCancel = useMemo(
+    () => () => {
+      setShowUnsavedModal(false);
+      setPendingNavigation(null);
+    },
+    [],
+  );
 
   if (error) throw error; // caught in error boundary
 
@@ -260,6 +420,13 @@ export const DashboardPage: FC<PageProps> = ({ idOrSlug }: PageProps) => {
               {DashboardBuilderComponent}
             </DashboardContainer>
           </DashboardPageIdContext.Provider>
+          <UnsavedChangesModal
+            show={showUnsavedModal}
+            onSave={handleSave}
+            onDiscard={handleDiscard}
+            onCancel={handleCancel}
+            primaryButtonLoading={isSaving}
+          />
         </>
       ) : (
         <Loading />

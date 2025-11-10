@@ -27,10 +27,11 @@ import {
   useTheme,
   css,
 } from '@superset-ui/core';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import rison from 'rison';
 import { uniqBy } from 'lodash';
 import { useSelector } from 'react-redux';
+import { Location } from 'history';
 import {
   createErrorHandler,
   createFetchRelated,
@@ -59,6 +60,7 @@ import { dangerouslyGetItemDoNotUse } from 'src/utils/localStorageHelpers';
 import withToasts from 'src/components/MessageToasts/withToasts';
 import PropertiesModal from 'src/explore/components/PropertiesModal';
 import ImportModelsModal from 'src/components/ImportModal/index';
+import UnsavedChangesModal from 'src/components/UnsavedChangesModal';
 import Chart from 'src/types/Chart';
 import Tag from 'src/types/TagType';
 import { Tooltip } from 'src/components/Tooltip';
@@ -95,15 +97,15 @@ const FlexRowContainer = styled.div`
 const PAGE_SIZE = 25;
 const PASSWORDS_NEEDED_MESSAGE = t(
   'The passwords for the databases below are needed in order to ' +
-    'import them together with the charts. Please note that the ' +
-    '"Secure Extra" and "Certificate" sections of ' +
-    'the database configuration are not present in export files, and ' +
-    'should be added manually after the import if they are needed.',
+  'import them together with the charts. Please note that the ' +
+  '"Secure Extra" and "Certificate" sections of ' +
+  'the database configuration are not present in export files, and ' +
+  'should be added manually after the import if they are needed.',
 );
 const CONFIRM_OVERWRITE_MESSAGE = t(
   'You are importing one or more charts that already exist. ' +
-    'Overwriting might cause you to lose some of your work. Are you ' +
-    'sure you want to overwrite?',
+  'Overwriting might cause you to lose some of your work. Are you ' +
+  'sure you want to overwrite?',
 );
 
 const registry = getChartMetadataRegistry();
@@ -159,6 +161,8 @@ const StyledActions = styled.div`
 `;
 
 function ChartList(props: ChartListProps) {
+  console.log('🟢 CHART LIST LOADED - This should appear immediately');
+  console.log('[ChartList] Component rendered/loaded');
   const theme = useTheme();
   const {
     addDangerToast,
@@ -195,10 +199,162 @@ function ChartList(props: ChartListProps) {
   );
   const {
     sliceCurrentlyEditing,
-    handleChartUpdated,
+    handleChartUpdated: originalHandleChartUpdated,
     openChartEditModal,
     closeChartEditModal,
   } = useChartEditModal(setCharts, charts);
+
+  // Wrap handleChartUpdated to reset unsaved changes
+  const handleChartUpdated = useCallback(
+    (chart: Chart) => {
+      originalHandleChartUpdated(chart);
+      setHasUnsavedChanges(false);
+    },
+    [originalHandleChartUpdated],
+  );
+
+  // Unsaved changes tracking
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null,
+  );
+  const unblockRef = useRef<(() => void) | null>(null);
+
+  // Handle form change notification from PropertiesModal
+  const handleFormChange = useCallback((hasChanges: boolean) => {
+    console.log('[ChartList] handleFormChange called:', hasChanges, 'sliceCurrentlyEditing:', sliceCurrentlyEditing);
+    setHasUnsavedChanges(hasChanges);
+  }, [sliceCurrentlyEditing]);
+
+  // Set up navigation blocking
+  useEffect(() => {
+    console.log('[ChartList] Navigation blocking effect:', {
+      hasUnsavedChanges,
+      sliceCurrentlyEditing,
+      currentPath: history.location.pathname,
+    });
+
+    if (hasUnsavedChanges && sliceCurrentlyEditing) {
+      console.log('[ChartList] Setting up navigation block');
+      // Block navigation when there are unsaved changes
+      unblockRef.current = history.block((location: Location, action: string) => {
+        console.log('[ChartList] Navigation blocked:', {
+          from: history.location.pathname,
+          to: location.pathname,
+          action,
+        });
+        // Only block if navigating to a different route
+        if (location.pathname !== history.location.pathname) {
+          setPendingNavigation(location.pathname);
+          setShowUnsavedModal(true);
+          // Return empty string to prevent navigation
+          return '';
+        }
+        // Allow navigation within the same route
+        return true;
+      });
+    } else {
+      console.log('[ChartList] Unblocking navigation');
+      // Unblock navigation when no unsaved changes
+      if (unblockRef.current) {
+        unblockRef.current();
+        unblockRef.current = null;
+      }
+    }
+
+    return () => {
+      if (unblockRef.current) {
+        console.log('[ChartList] Cleaning up navigation block');
+        unblockRef.current();
+        unblockRef.current = null;
+      }
+    };
+  }, [hasUnsavedChanges, sliceCurrentlyEditing, history]);
+
+  // Reset unsaved changes when modal closes
+  useEffect(() => {
+    if (!sliceCurrentlyEditing) {
+      setHasUnsavedChanges(false);
+      setShowUnsavedModal(false);
+      setPendingNavigation(null);
+    }
+  }, [sliceCurrentlyEditing]);
+
+  // Debug: Log render state
+  useEffect(() => {
+    console.log('[ChartList] Render state:', {
+      showUnsavedModal,
+      hasUnsavedChanges,
+      sliceCurrentlyEditing: !!sliceCurrentlyEditing,
+      pendingNavigation,
+    });
+  }, [showUnsavedModal, hasUnsavedChanges, sliceCurrentlyEditing, pendingNavigation]);
+
+  // Handle browser tab close/refresh (like Dashboard does)
+  // Only show browser prompt when custom modal is NOT showing
+  // This prevents double prompts when user clicks Cancel on custom modal
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent): string | undefined => {
+      // Don't show browser prompt if custom modal is already showing
+      // The custom modal handles in-app navigation, browser prompt only handles tab close/refresh
+      if (hasUnsavedChanges && sliceCurrentlyEditing && !showUnsavedModal) {
+        const message = t('You have unsaved changes.');
+        e.preventDefault();
+        e.returnValue = message; // For Chrome
+        return message; // For Safari
+      }
+      return undefined;
+    };
+
+    // Only add listener if not in Cypress (as Dashboard does)
+    if (!(window as any).Cypress) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      if (!(window as any).Cypress) {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      }
+    };
+  }, [hasUnsavedChanges, sliceCurrentlyEditing, showUnsavedModal]);
+
+  // Handle Save action - save via PropertiesModal
+  const handleSave = useCallback(() => {
+    // Close unsaved changes modal
+    setShowUnsavedModal(false);
+    setPendingNavigation(null);
+    // The PropertiesModal will handle the actual save
+    // User needs to click Save in the PropertiesModal
+  }, []);
+
+  // Handle Discard action - close PropertiesModal and allow navigation
+  const handleDiscard = useCallback(() => {
+    // Temporarily unblock to allow navigation
+    const currentUnblock = unblockRef.current;
+    if (currentUnblock) {
+      currentUnblock();
+      unblockRef.current = null;
+    }
+
+    // Close PropertiesModal (discarding changes)
+    closeChartEditModal();
+    setHasUnsavedChanges(false);
+    setShowUnsavedModal(false);
+
+    // Proceed with navigation
+    const navPath = pendingNavigation;
+    setPendingNavigation(null);
+    if (navPath) {
+      history.push(navPath);
+    }
+  }, [history, pendingNavigation, closeChartEditModal]);
+
+  // Handle Cancel action
+  const handleCancel = useCallback(() => {
+    setShowUnsavedModal(false);
+    setPendingNavigation(null);
+  }, []);
 
   const [importingChart, showImportModal] = useState<boolean>(false);
   const [passwordFields, setPasswordFields] = useState<string[]>([]);
@@ -271,14 +427,14 @@ function ChartList(props: ChartListProps) {
     // add filters if filterValue
     const filters = filterValue
       ? {
-          filters: [
-            {
-              col: 'dashboard_title',
-              opr: FilterOperator.StartsWith,
-              value: filterValue,
-            },
-          ],
-        }
+        filters: [
+          {
+            col: 'dashboard_title',
+            opr: FilterOperator.StartsWith,
+            value: filterValue,
+          },
+        ],
+      }
       : {};
     const queryParams = rison.encode({
       columns: ['dashboard_title', 'id'],
@@ -615,16 +771,16 @@ function ChartList(props: ChartListProps) {
       },
       ...(isFeatureEnabled(FeatureFlag.TaggingSystem) && canReadTag
         ? [
-            {
-              Header: t('Tag'),
-              key: 'tags',
-              id: 'tags',
-              input: 'select',
-              operator: FilterOperator.ChartTagById,
-              unfilteredLabel: t('All'),
-              fetchSelects: loadTags,
-            },
-          ]
+          {
+            Header: t('Tag'),
+            key: 'tags',
+            id: 'tags',
+            input: 'select',
+            operator: FilterOperator.ChartTagById,
+            unfilteredLabel: t('All'),
+            fetchSelects: loadTags,
+          },
+        ]
         : []),
       {
         Header: t('Owner'),
@@ -805,8 +961,19 @@ function ChartList(props: ChartListProps) {
           onSave={handleChartUpdated}
           show
           slice={sliceCurrentlyEditing}
+          onFormChange={(hasChanges: boolean) => {
+            console.log('[ChartList] PropertiesModal onFormChange:', hasChanges);
+            handleFormChange(hasChanges);
+          }}
         />
       )}
+      <UnsavedChangesModal
+        show={showUnsavedModal}
+        onSave={handleSave}
+        onDiscard={handleDiscard}
+        onCancel={handleCancel}
+        primaryButtonLoading={false}
+      />
       <ConfirmStatusChange
         title={t('Please confirm')}
         description={t('Are you sure you want to delete the selected charts?')}
