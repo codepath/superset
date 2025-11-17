@@ -157,5 +157,23 @@ describe('plugin-chart-table', () => {
       expect(queries[1].extras?.time_grain_sqla).toBeUndefined();
       expect(queries[1].extras?.where).toEqual("(status IN ('In Process'))");
     });
+    it('should respect order_desc when defaulting to first metric', () => {
+      const query = buildQuery({
+        ...basicFormData,
+        query_mode: QueryMode.Aggregate,
+        metrics: ['aaa', 'bbb'],
+        order_desc: false,
+      }).queries[0];
+      expect(query.orderby).toEqual([['aaa', true]]);
+    });
+    it('should fall back to descending when order_desc is true', () => {
+      const query = buildQuery({
+        ...basicFormData,
+        query_mode: QueryMode.Aggregate,
+        metrics: ['aaa', 'bbb'],
+        order_desc: true,
+      }).queries[0];
+      expect(query.orderby).toEqual([['aaa', false]]);
+    });
   });
 });

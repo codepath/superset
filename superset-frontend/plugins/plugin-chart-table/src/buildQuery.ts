@@ -123,9 +123,8 @@ const buildQuery: BuildQuery<TableChartFormData> = (
       if (sortByMetric) {
         orderby = [[sortByMetric, !orderDesc]];
       } else if (metrics?.length > 0) {
-        // default to ordering by first metric in descending order
-        // when no "sort by" metric is set (regardless if "SORT DESC" is set to true)
-        orderby = [[metrics[0], false]];
+        // default to ordering by first metric, respecting the "Sort descending" toggle
+        orderby = [[metrics[0], !orderDesc]];
       }
       // add postprocessing for percent metrics only when in aggregation mode
       if (percentMetrics && percentMetrics.length > 0) {
@@ -134,9 +133,9 @@ const buildQuery: BuildQuery<TableChartFormData> = (
           baseQueryObject,
         )
           ? addComparisonPercentMetrics(
-              percentMetrics.map(getMetricLabel),
-              timeOffsets,
-            )
+            percentMetrics.map(getMetricLabel),
+            timeOffsets,
+          )
           : percentMetrics.map(getMetricLabel);
         const percentMetricLabels = removeDuplicates(
           percentMetricsLabelsWithTimeComparison,
@@ -218,7 +217,7 @@ const buildQuery: BuildQuery<TableChartFormData> = (
       formData.server_pagination &&
       options?.extras?.cachedChanges?.[formData.slice_id] &&
       JSON.stringify(options?.extras?.cachedChanges?.[formData.slice_id]) !==
-        JSON.stringify(queryObject.filters)
+      JSON.stringify(queryObject.filters)
     ) {
       queryObject = { ...queryObject, row_offset: 0 };
       updateExternalFormData(
@@ -291,7 +290,7 @@ export const cachedBuildQuery = (): BuildQuery<TableChartFormData> => {
         ownState: options?.ownState ?? {},
         hooks: {
           ...options?.hooks,
-          setDataMask: () => {},
+          setDataMask: () => { },
           setCachedChanges,
         },
       },

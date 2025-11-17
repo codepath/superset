@@ -122,8 +122,8 @@ const percentMetricsControl: typeof sharedControls.metrics = {
   label: t('Percentage metrics'),
   description: t(
     'Select one or many metrics to display, that will be displayed in the percentages of total. ' +
-      'Percentage metrics will be calculated only from data within the row limit. ' +
-      'You can use an aggregation function on a column or write custom SQL to create a percentage metric.',
+    'Percentage metrics will be calculated only from data within the row limit. ' +
+    'You can use an aggregation function on a column or write custom SQL to create a percentage metric.',
   ),
   visibility: isAggMode,
   resetOnHide: false,
@@ -270,8 +270,8 @@ const config: ControlPanelConfig = {
               ) => ({
                 columns: datasource?.columns[0]?.hasOwnProperty('filterable')
                   ? (datasource as Dataset)?.columns?.filter(
-                      (c: ColumnMeta) => c.filterable,
-                    )
+                    (c: ColumnMeta) => c.filterable,
+                  )
                   : datasource?.columns,
                 savedMetrics: defineSavedMetrics(datasource),
                 // current active adhoc metrics
@@ -308,6 +308,28 @@ const config: ControlPanelConfig = {
               resetOnHide: false,
             },
           },
+        ],
+        [
+          {
+            name: 'order_desc',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Sort descending'),
+              default: true,
+              description: t(
+                'If enabled, this control sorts the results/values descending, otherwise it sorts the results ascending.',
+              ),
+              visibility: ({ controls }: ControlPanelsContainerProps) => {
+                const sortMetric = controls?.timeseries_limit_metric?.value;
+                return Boolean(
+                  isAggMode({ controls }) && sortMetric && !isEmpty(sortMetric),
+                );
+              },
+              resetOnHide: false,
+            },
+          },
+        ],
+        [
           {
             name: 'order_by_cols',
             config: {
@@ -359,21 +381,6 @@ const config: ControlPanelConfig = {
               description: t('Rows per page, 0 means no pagination'),
               visibility: ({ controls }: ControlPanelsContainerProps) =>
                 Boolean(controls?.server_pagination?.value),
-            },
-          },
-        ],
-        [
-          {
-            name: 'order_desc',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Sort descending'),
-              default: true,
-              description: t(
-                'If enabled, this control sorts the results/values descending, otherwise it sorts the results ascending.',
-              ),
-              visibility: isAggMode,
-              resetOnHide: false,
             },
           },
         ],
@@ -582,8 +589,8 @@ const config: ControlPanelConfig = {
               default: false,
               description: t(
                 'This will be applied to the whole table. Arrows (↑ and ↓) will be added to ' +
-                  'main columns for increase and decrease. Basic conditional formatting can be ' +
-                  'overwritten by conditional formatting below.',
+                'main columns for increase and decrease. Basic conditional formatting can be ' +
+                'overwritten by conditional formatting below.',
               ),
             },
           },
@@ -605,7 +612,7 @@ const config: ControlPanelConfig = {
                 Boolean(controls?.comparison_color_enabled?.value),
               description: t(
                 'Adds color to the chart symbols based on the positive or ' +
-                  'negative change from the comparison value.',
+                'negative change from the comparison value.',
               ),
             },
           },
@@ -645,24 +652,24 @@ const config: ControlPanelConfig = {
                 const numericColumns =
                   Array.isArray(colnames) && Array.isArray(coltypes)
                     ? colnames
-                        .filter(
-                          (colname: string, index: number) =>
-                            coltypes[index] === GenericDataType.Numeric,
-                        )
-                        .map((colname: string) => ({
-                          value: colname,
-                          label: Array.isArray(verboseMap)
-                            ? colname
-                            : (verboseMap[colname] ?? colname),
-                        }))
+                      .filter(
+                        (colname: string, index: number) =>
+                          coltypes[index] === GenericDataType.Numeric,
+                      )
+                      .map((colname: string) => ({
+                        value: colname,
+                        label: Array.isArray(verboseMap)
+                          ? colname
+                          : (verboseMap[colname] ?? colname),
+                      }))
                     : [];
                 const columnOptions = explore?.controls?.time_compare?.value
                   ? processComparisonColumns(
-                      numericColumns || [],
-                      ensureIsArray(
-                        explore?.controls?.time_compare?.value,
-                      )[0]?.toString() || '',
-                    )
+                    numericColumns || [],
+                    ensureIsArray(
+                      explore?.controls?.time_compare?.value,
+                    )[0]?.toString() || '',
+                  )
                   : numericColumns;
 
                 return {
