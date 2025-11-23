@@ -71,6 +71,8 @@ import DataSourcePanel from '../DatasourcePanel';
 import ConnectedExploreChartHeader from '../ExploreChartHeader';
 import ExploreContainer from '../ExploreContainer';
 
+const originalDocumentTitle = document.title;
+
 const propTypes = {
   ...ExploreChartPanel.propTypes,
   actions: PropTypes.object.isRequired,
@@ -272,9 +274,9 @@ function ExploreViewContainer(props) {
     async ({ isReplace = false, title } = {}) => {
       const formData = props.dashboardId
         ? {
-            ...props.form_data,
-            dashboardId: props.dashboardId,
-          }
+          ...props.form_data,
+          dashboardId: props.dashboardId,
+        }
         : props.form_data;
       const { id: datasourceId, type: datasourceType } = props.datasource;
 
@@ -363,8 +365,8 @@ function ExploreViewContainer(props) {
       LOG_ACTIONS_MOUNT_EXPLORER,
       props.slice?.slice_id
         ? {
-            slice_id: props.slice.slice_id,
-          }
+          slice_id: props.slice.slice_id,
+        }
         : undefined,
     );
   });
@@ -414,13 +416,24 @@ function ExploreViewContainer(props) {
     }
   }, []);
 
+  useEffect(() => {
+    if (props.sliceName) {
+      document.title = props.sliceName;
+    } else {
+      document.title = originalDocumentTitle;
+    }
+    return () => {
+      document.title = originalDocumentTitle;
+    };
+  }, [props.sliceName]);
+
   const reRenderChart = useCallback(
     controlsChanged => {
       const newQueryFormData = controlsChanged
         ? {
-            ...props.chart.latestQueryFormData,
-            ...getFormDataFromControls(pick(props.controls, controlsChanged)),
-          }
+          ...props.chart.latestQueryFormData,
+          ...getFormDataFromControls(pick(props.controls, controlsChanged)),
+        }
         : getFormDataFromControls(props.controls);
       props.actions.updateQueryFormData(newQueryFormData, props.chart.id);
       props.actions.renderTriggered(new Date().getTime(), props.chart.id);
