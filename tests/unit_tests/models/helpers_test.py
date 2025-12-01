@@ -200,11 +200,13 @@ def test_values_for_column_double_percents(
         "AS column_values \nFROM t\n LIMIT 10000 OFFSET 0"
     )
     # make sure final query has single percents
-    with database.get_sqla_engine() as engine:
-        pd.read_sql_query.assert_called_with(
-            sql=(
-                "SELECT DISTINCT CASE WHEN b LIKE 'A%' THEN 'yes' ELSE 'nope' END "
-                "AS column_values \nFROM t\n LIMIT 10000 OFFSET 0"
-            ),
-            con=engine,
-        )
+    # Note: The actual code uses engine.connect() as connection, so we check
+    # that read_sql was called (not read_sql_query) with the correct SQL
+    pd.read_sql.assert_called_once()
+    call_args = pd.read_sql.call_args
+    # Check SQL argument (can be positional or keyword)
+    sql_arg = call_args[0][0] if call_args[0] else call_args[1].get("sql")
+    assert sql_arg == (
+        "SELECT DISTINCT CASE WHEN b LIKE 'A%' THEN 'yes' ELSE 'nope' END "
+        "AS column_values \nFROM t\n LIMIT 10000 OFFSET 0"
+    )
