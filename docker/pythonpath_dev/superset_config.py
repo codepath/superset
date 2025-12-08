@@ -23,6 +23,9 @@
 import logging
 import os
 import sys
+import re
+from flask_babel import gettext as __
+from superset.errors import SupersetErrorType
 
 from celery.schedules import crontab
 from flask_caching.backends.filesystemcache import FileSystemCache
@@ -133,3 +136,23 @@ try:
     )
 except ImportError:
     logger.info("Using default Docker config...")
+
+CUSTOM_DATABASE_ERRORS = {
+    "examples": {
+        # Match PostgreSQL "relation does not exist" errors with capture group
+        # This pattern captures the table name from the error message
+        re.compile(r'relation "(?P<table_name>.+)" does not exist', re.IGNORECASE): (
+            __("The table '%(table_name)s' does not exist. Please check the table name and try again."),
+            SupersetErrorType.TABLE_DOES_NOT_EXIST_ERROR,
+            {
+                "custom_doc_links": [
+                    {
+                        "url": "https://example.com/docs/tables",
+                        "label": "View available tables"
+                    }
+                ],
+                "show_issue_info": True,
+            }
+        )
+    }
+}

@@ -1936,6 +1936,23 @@ CATALOGS_SIMPLIFIED_MIGRATION: bool = False
 # keeping a web API call open for this long.
 SYNC_DB_PERMISSIONS_IN_ASYNC_MODE: bool = False
 
+# Custom database error message configuration
+# Allows administrators to define custom error messages for specific database errors
+# per database connection. Format:
+# CUSTOM_DATABASE_ERRORS = {
+#     "database_name": {
+#         re.compile("error pattern"): (
+#             "Custom error message",
+#             SupersetErrorType.ERROR_TYPE,
+#             {
+#                 "custom_doc_links": [{"url": "...", "label": "..."}],
+#                 "show_issue_info": False,  # Optional: hide issue codes
+#             }
+#         )
+#     }
+# }
+CUSTOM_DATABASE_ERRORS: dict[str, dict[Any, tuple[str, Any, dict[str, Any]]]] = {}
+
 
 # -------------------------------------------------------------------
 # *                WARNING:  STOP EDITING  HERE                    *

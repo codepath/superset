@@ -1366,6 +1366,45 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         raw_message = cls._extract_error_message(ex)
 
         context = context or {}
+        
+        # Check for custom database errors from config
+        database_name = context.get("database_name")
+        if database_name:
+            try:
+                # Try to access CUSTOM_DATABASE_ERRORS from Flask config
+                # This might not be available in all contexts (e.g., tests)
+                custom_db_errors = current_app.config.get("CUSTOM_DATABASE_ERRORS", {})
+                if database_name in custom_db_errors:
+                    db_custom_errors = custom_db_errors[database_name]
+                    for pattern, (message, error_type, extra) in db_custom_errors.items():
+                        # Compile pattern if it's a string
+                        if isinstance(pattern, str):
+                            regex = re.compile(pattern)
+                        elif isinstance(pattern, Pattern):
+                            regex = pattern
+                        else:
+                            # Skip invalid pattern types
+                            continue
+                        
+                        if match := regex.search(raw_message):
+                            params = {**context, **match.groupdict()}
+                            # Create a copy of extra to avoid modifying the original
+                            error_extra = {**extra}
+                            error_extra["engine_name"] = cls.engine_name
+                            return [
+                                SupersetError(
+                                    error_type=error_type,
+                                    message=message % params,
+                                    level=ErrorLevel.ERROR,
+                                    extra=error_extra,
+                                )
+                            ]
+            except (RuntimeError, AttributeError):
+                # current_app might not be available (e.g., in tests or CLI)
+                # Fall through to engine spec's built-in custom_errors
+                pass
+        
+        # Check engine spec's built-in custom errors
         for regex, (message, error_type, extra) in cls.custom_errors.items():
             if match := regex.search(raw_message):
                 params = {**context, **match.groupdict()}

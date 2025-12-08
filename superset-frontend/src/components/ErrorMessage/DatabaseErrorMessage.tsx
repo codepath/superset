@@ -25,11 +25,13 @@ import ErrorAlert from './ErrorAlert';
 
 interface DatabaseErrorExtra {
   owners?: string[];
-  issue_codes: {
+  issue_codes?: {
     code: number;
     message: string;
   }[];
   engine_name: string | null;
+  show_issue_info?: boolean;
+  custom_doc_links?: Array<{ url: string; label: string }>;
 }
 
 function DatabaseErrorMessage({
@@ -45,47 +47,122 @@ function DatabaseErrorMessage({
   const alertDescription =
     remainingLines.length > 0 ? remainingLines.join('\n') : null;
 
-  const body = extra && (
+  // When show_issue_info is explicitly False, never show "See more" button
+  // Check if show_issue_info is explicitly set to False
+  const showIssueInfo = extra?.show_issue_info !== false;
+  const hasIssueCodes =
+    showIssueInfo && extra?.issue_codes && extra.issue_codes.length > 0;
+  const hasOwners = isVisualization && extra?.owners && extra.owners.length > 0;
+  const hasCustomDocLinks =
+    extra?.custom_doc_links && extra.custom_doc_links.length > 0;
+  // When show_issue_info is false, hide the "See more" button entirely
+  // This must be false when show_issue_info is explicitly False, regardless of other content
+  // If show_issue_info is False, hasDescriptionDetails must be false to hide "See more"
+  const hasDescriptionDetails =
+    showIssueInfo && (hasIssueCodes || hasOwners || hasCustomDocLinks);
+
+  const body = extra && hasDescriptionDetails && (
     <>
-      <p>
-        {t('This may be triggered by:')}
-        <br />
-        {extra.issue_codes
-          ?.map<ReactNode>(issueCode => (
-            <IssueCode {...issueCode} key={issueCode.code} />
-          ))
-          .reduce((prev, curr) => [prev, <br />, curr])}
-      </p>
-      {isVisualization && extra.owners && (
-        <>
+      {hasIssueCodes && (
+        <p>
+          {t('This may be triggered by:')}
           <br />
+          {extra.issue_codes!
+            .map<ReactNode>(issueCode => (
+              <IssueCode {...issueCode} key={issueCode.code} />
+            ))
+            .reduce((prev, curr) => [prev, <br />, curr])}
+        </p>
+      )}
+      {hasOwners && (
+        <>
+          {hasIssueCodes && <br />}
           <p>
             {tn(
               'Please reach out to the Chart Owner for assistance.',
               'Please reach out to the Chart Owners for assistance.',
-              extra.owners.length,
+              extra.owners!.length,
             )}
           </p>
           <p>
             {tn(
               'Chart Owner: %s',
               'Chart Owners: %s',
-              extra.owners.length,
-              extra.owners.join(', '),
+              extra.owners!.length,
+              extra.owners!.join(', '),
             )}
+          </p>
+        </>
+      )}
+      {hasCustomDocLinks && (
+        <>
+          {(hasIssueCodes || hasOwners) && <br />}
+          <p>
+            {t('For more information, see:')}
+            <br />
+            {extra.custom_doc_links!.map((link, index) => (
+              <span key={link.url}>
+                {index > 0 && <br />}
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: 'underline' }}
+                >
+                  {link.label}
+                </a>
+              </span>
+            ))}
           </p>
         </>
       )}
     </>
   );
 
+  // When show_issue_info is false, show custom doc links inline in description
+  // instead of in the collapsible "See more" section
+  const inlineCustomDocLinks =
+    !showIssueInfo &&
+    hasCustomDocLinks &&
+    extra.custom_doc_links && (
+      <>
+        {alertDescription && <br />}
+        <br />
+        {t('For more information, see:')}
+        <br />
+        {extra.custom_doc_links.map((link, index) => (
+          <span key={link.url}>
+            {index > 0 && <br />}
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'underline' }}
+            >
+              {link.label}
+            </a>
+          </span>
+        ))}
+      </>
+    );
+
+  const finalDescription =
+    alertDescription || inlineCustomDocLinks
+      ? (
+          <>
+            {alertDescription}
+            {inlineCustomDocLinks}
+          </>
+        )
+      : null;
+
   return (
     <ErrorAlert
       errorType={t('%s Error', extra?.engine_name || t('DB engine'))}
       message={alertMessage}
-      description={alertDescription}
+      description={finalDescription}
       type={level}
-      descriptionDetails={body}
+      descriptionDetails={hasDescriptionDetails && body ? body : undefined}
     />
   );
 }

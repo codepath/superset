@@ -1767,7 +1767,10 @@ class SqlaTable(
             )
             db_engine_spec = self.db_engine_spec
             errors = [
-                dataclasses.asdict(error) for error in db_engine_spec.extract_errors(ex)
+                dataclasses.asdict(error)
+                for error in db_engine_spec.extract_errors(
+                    ex, context={"database_name": self.database.database_name}
+                )
             ]
             error_message = utils.error_msg_from_exception(ex)
 

@@ -126,3 +126,6 @@ docker/*local*
 test-report.html
 superset/static/stats/statistics.html
 .aider*
+
+.cursor/
+.venv312/

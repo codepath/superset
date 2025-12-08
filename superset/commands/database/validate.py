@@ -123,6 +123,7 @@ class ValidateDatabaseParametersCommand(BaseCommand):
                     "port": url.port,
                     "username": url.username,
                     "database": url.database,
+                    "database_name": database.database_name,
                 }
                 errors = database.db_engine_spec.extract_errors(ex, context)
                 raise DatabaseTestConnectionFailedError(errors) from ex
