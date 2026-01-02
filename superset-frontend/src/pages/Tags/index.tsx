@@ -105,7 +105,7 @@ function TagList(props: TagListProps) {
   const canDelete = hasPerm('can_write');
   const canEdit = hasPerm('can_write');
 
-  const initialSort = [{ id: 'changed_on_delta_humanized', desc: true }];
+  const initialSort = [{ id: 'name', desc: false }];
 
   function handleTagsDelete(tags: Tag[]) {
     deleteTags(
