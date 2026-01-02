@@ -17,7 +17,7 @@
  * under the License.
  */
 import { useEffect, useRef, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import {
   getLabelsColorMap,
@@ -47,6 +47,8 @@ const isValidResult = (rv: JsonObject): boolean =>
 
 const hasDatasetId = (rv: JsonObject): boolean =>
   isDefined(rv?.result?.dataset?.id);
+
+const originalDocumentTitle = document.title;
 
 const fetchExploreData = async (exploreUrlParams: URLSearchParams) => {
   try {
@@ -135,7 +137,8 @@ export default function ExplorePage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const isExploreInitialized = useRef(false);
   const dispatch = useDispatch();
-  const location = useLocation();
+  const location = useLocation();  
+  const sliceName = useSelector((state: any) => state.explore?.sliceName);
 
   useEffect(() => {
     const exploreUrlParams = getParsedExploreURLParams(location);
@@ -172,6 +175,15 @@ export default function ExplorePage() {
     }
     getLabelsColorMap().source = LabelsColorMapSource.Explore;
   }, [dispatch, location]);
+
+  useEffect(() => {
+    if (sliceName){
+      document.title = sliceName;
+    }
+    return () => {
+      document.title = originalDocumentTitle;
+    };
+  }, [sliceName]);
 
   if (!isLoaded) {
     return <Loading />;

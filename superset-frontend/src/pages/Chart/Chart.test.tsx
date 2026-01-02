@@ -48,8 +48,11 @@ jest.mock(
 jest.mock('src/dashboard/util/charts/getFormDataWithExtraFilters');
 
 describe('ChartPage', () => {
+  const originalDocumentTitle = document.title;
+
   afterEach(() => {
     fetchMock.reset();
+    document.title = originalDocumentTitle;
   });
 
   test('fetches metadata on mount', async () => {
@@ -185,6 +188,58 @@ describe('ChartPage', () => {
           show_cell_bars: updatedExploreFormData.show_cell_bars,
         }).slice(1, -1),
       );
+    });
+  });
+
+  describe('document title', () => {
+    test('sets document title to slice name when chart loads', async () => {
+      const sliceName = 'My Test Chart';
+      const exploreApiRoute = 'glob:*/api/v1/explore/*';
+      const exploreFormData = getExploreFormData({
+        viz_type: VizType.Table,
+      });
+      fetchMock.get(exploreApiRoute, {
+        result: {
+          dataset: { id: 1 },
+          form_data: exploreFormData,
+          slice: { slice_name: sliceName },
+        },
+      });
+      render(<ChartPage />, {
+        useRouter: true,
+        useRedux: true,
+        useDnd: true,
+      });
+      await waitFor(() =>
+        expect(fetchMock.calls(exploreApiRoute).length).toBe(1),
+      );
+      await waitFor(() => expect(document.title).toBe(sliceName));
+    });
+
+    test('resets document title on unmount', async () => {
+      const sliceName = 'My Test Chart';
+      const exploreApiRoute = 'glob:*/api/v1/explore/*';
+      const exploreFormData = getExploreFormData({
+        viz_type: VizType.Table,
+      });
+      fetchMock.get(exploreApiRoute, {
+        result: {
+          dataset: { id: 1 },
+          form_data: exploreFormData,
+          slice: { slice_name: sliceName },
+        },
+      });
+      const { unmount } = render(<ChartPage />, {
+        useRouter: true,
+        useRedux: true,
+        useDnd: true,
+      });
+      await waitFor(() =>
+        expect(fetchMock.calls(exploreApiRoute).length).toBe(1),
+      );
+      await waitFor(() => expect(document.title).toBe(sliceName));
+      unmount();
+      expect(document.title).toBe(originalDocumentTitle);
     });
   });
 });

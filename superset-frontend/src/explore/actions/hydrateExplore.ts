@@ -151,6 +151,7 @@ export const hydrateExplore =
       controls: initialControls,
       form_data: initialFormData,
       slice: initialSlice,
+      sliceName: initialSlice?.slice_name,
       controlsTransferred: explore.controlsTransferred,
       standalone: getUrlParam(URL_PARAMS.standalone),
       force: getUrlParam(URL_PARAMS.force),
