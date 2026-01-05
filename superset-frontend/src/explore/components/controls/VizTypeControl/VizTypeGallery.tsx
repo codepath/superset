@@ -447,6 +447,13 @@ export default function VizTypeGallery(props: VizTypeGalleryProps) {
     ? mountedPluginMetadata[selectedViz]
     : null;
 
+  // Auto-focus the search input when the modal opens
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, []); 
+
   const chartMetadata: VizEntry[] = useMemo(() => {
     const result = Object.entries(mountedPluginMetadata)
       .map(([key, value]) => ({ key, value }))
